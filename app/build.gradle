@@ -7,6 +7,8 @@ plugins {
     id 'dagger.hilt.android.plugin'
     id 'kotlin-parcelize'
 }
+def providedVersionName = "1.0"
+def providedApkName = "payment_app-V${providedVersionName}.apk"
 
 android {
     namespace 'com.nivin.nivinecommerceapp'
@@ -17,13 +19,18 @@ android {
         minSdk 26
         targetSdk 33
         versionCode 1
-        versionName "1.0"
+        versionName providedVersionName
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         final Properties properties = new Properties()
         properties.load(project.rootProject.file("local.properties").newDataInputStream())
 
         buildConfigField "String", "ENCRYPTION_KEY", "\"${properties.getProperty("ENCRYPTION_KEY")}\""
+    }
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = providedApkName
+        }
     }
 
     buildTypes {
@@ -85,4 +92,21 @@ dependencies {
     implementation "androidx.activity:activity-ktx:1.6.1"
 
     implementation 'com.razorpay:checkout:1.6.26'
+}
+
+// saves the apk file in the debugApk folder
+task copyApk(type: Copy) {
+    def sourceDir = layout.buildDirectory.dir("outputs/apk/debug/$providedApkName")
+    def destDir = "$rootDir/debugApk"
+    from sourceDir
+    into destDir
+    doLast {
+        def file = new File(destDir, providedApkName)
+        ant.checksum file: file.path
+    }
+}
+tasks.whenTaskAdded { task ->
+    if (task.name == "assembleDebug") {
+        task.finalizedBy "copyApk"
+    }
 }
